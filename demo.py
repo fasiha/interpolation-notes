@@ -61,10 +61,38 @@ def remezDesign(L, w0, rippleDb=-30):
     out : ndarray
         A rank-1 array (vector) containing the filter weights.
     """
-    bandsDesired = remezBands(L, w0)
     ntaps, _ = signal.kaiserord(rippleDb,
                                 (2 * np.pi - 2 * w0) / (L * 2 * np.pi))
+    bandsDesired = remezBands(L, w0)
     return signal.remez(ntaps, *bandsDesired)
+
+
+def firwin2Design(L, w0, rippleDb=-30):
+    """Like `remezDesign` but uses `scipy.signal.firwin2` instead of Remez.
+
+    Since `firwin2` doesn’t handle don’t-care regions, the returned filter is
+    just an ordinary low-pass filter, and is likely to have slower
+    transition-band behavior than that returned by `remezDesign` or
+    `firlsDesign`.
+    """
+    ntaps, _ = signal.kaiserord(rippleDb,
+                                (2 * np.pi - 2 * w0) / (L * 2 * np.pi))
+    bands, gains = remezBands(L, w0)
+    return signal.firwin2(ntaps, [0, bands[1], bands[2], 0.5], [1, 1, 0, 0.0],
+                          nyq=0.5)
+
+
+def firlsDesign(L, w0, rippleDb=-30):
+    "Like `remezDesign` but uses `scipy.signal.firls` instead of Remez."
+    ntaps, _ = signal.kaiserord(rippleDb,
+                                (2 * np.pi - 2 * w0) / (L * 2 * np.pi))
+    # firls requires odd numtaps
+    if ntaps % 2 == 0:
+        ntaps += 1
+    b, g = remezBands(L, w0)
+    # the `vstack` stuff below: repeat each element of `g` twice, so `[1 0 0]`
+    # becomes `[1 1, 0 0, 0 0]`.
+    return signal.firls(ntaps, b, np.vstack([g, g]).T.ravel(), nyq=0.5)
 
 
 if __name__ == '__main__':
@@ -90,4 +118,10 @@ if __name__ == '__main__':
     viz(remezDesign(4, w0))
     viz(remezDesign(3, w0))
     viz(remezDesign(2, w0))
+    plt.grid()
+
+    plt.figure()
+    viz(remezDesign(4, w0))
+    viz(firwin2Design(4, w0))
+    viz(firlsDesign(4, w0))
     plt.grid()
