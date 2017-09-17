@@ -125,3 +125,33 @@ if __name__ == '__main__':
     viz(firwin2Design(4, w0))
     viz(firlsDesign(4, w0))
     plt.grid()
+
+    b, a = signal.butter(9, 0.8)
+    w, h = signal.freqz(b, a)
+    plt.figure()
+    plt.plot(w, db20(h))
+
+    x = np.random.randn(100)
+    y = signal.lfilter(b, a, x)
+
+    L = 4
+    z = np.vstack([y] + [np.zeros_like(y)] * (L - 1))
+    z = z.T.ravel()
+
+    b = remezDesign(L, 0.9 * np.pi)
+    v = signal.lfilter(b, 1, z)
+
+    plt.figure()
+    plt.plot(np.fft.rfftfreq(1024), db20(np.fft.rfft(x, 1024)))
+    plt.plot(np.fft.rfftfreq(1024), db20(np.fft.rfft(y, 1024)))
+    plt.plot(np.fft.rfftfreq(1024) * L, db20(np.fft.rfft(z, 1024)))
+    plt.plot(np.fft.rfftfreq(1024) * L, db20(np.fft.rfft(v, 1024)))
+    plt.grid()
+
+    delay = (b.size - 1) / (L * 2.0)
+    tx = np.arange(x.size + 0.0)
+    tv = np.arange(v.size + 0.0) / L - delay
+
+    plt.figure()
+    plt.plot(tx, y, 'o--')
+    plt.plot(tv, v * L, '.-')
